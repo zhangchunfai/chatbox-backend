@@ -24,7 +24,10 @@ app.use(express.json());
 // 初始化 Azure OpenAI 客户端
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-  baseURL: process.env.AZURE_OPENAI_ENDPOINT, // 不要额外拼接 /openai/v1
+  // 拼接完整路径：endpoint + /openai/deployments/<部署名>
+  baseURL: `${process.env.AZURE_OPENAI_ENDPOINT}/openai/deployments/${process.env.AZURE_OPENAI_DEPLOYMENT}`,
+  // 默认带上 api-version
+  defaultQuery: { "api-version": process.env.AZURE_OPENAI_API_VERSION }
 });
 
 // 根路由测试
@@ -41,14 +44,14 @@ app.post("/chat", async (req, res) => {
 
   try {
     const response = await client.chat.completions.create({
-      model: process.env.AZURE_OPENAI_DEPLOYMENT, // 部署名（不是模型名）
+      model: process.env.AZURE_OPENAI_DEPLOYMENT, // 部署名
       messages: [{ role: "user", content: userMessage }],
       // 可选参数：temperature, max_tokens 等
     });
 
     res.json({ reply: response.choices[0].message.content });
   } catch (error) {
-    console.error("调用 Azure OpenAI 出错:", error.message, error.response?.data);
+    console.error("调用 Azure OpenAI 出错:", error);
     res.status(500).json({
       reply: "调用 Azure OpenAI 接口失败，请检查配置。",
       error: error.message,
