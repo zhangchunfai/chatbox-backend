@@ -1,4 +1,4 @@
-// 引入依赖
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const { OpenAI } = require("openai");
@@ -24,9 +24,7 @@ app.use(express.json());
 // 初始化 Azure OpenAI 客户端
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-  // 拼接完整路径：endpoint + /openai/deployments/<部署名>
   baseURL: `${process.env.AZURE_OPENAI_ENDPOINT}/openai/deployments/${process.env.AZURE_OPENAI_DEPLOYMENT}`,
-  // 默认带上 api-version
   defaultQuery: { "api-version": process.env.AZURE_OPENAI_API_VERSION }
 });
 
@@ -37,6 +35,7 @@ app.get("/", (req, res) => {
 
 // 聊天接口
 app.post("/chat", async (req, res) => {
+  console.log("收到消息:", req.body); // 调试日志
   const userMessage = req.body.message;
   if (!userMessage) {
     return res.status(400).json({ reply: "缺少用户消息" });
@@ -44,14 +43,13 @@ app.post("/chat", async (req, res) => {
 
   try {
     const response = await client.chat.completions.create({
-      model: process.env.AZURE_OPENAI_DEPLOYMENT, // 部署名
+      model: process.env.AZURE_OPENAI_DEPLOYMENT,
       messages: [{ role: "user", content: userMessage }],
-      // 可选参数：temperature, max_tokens 等
     });
 
     res.json({ reply: response.choices[0].message.content });
   } catch (error) {
-    console.error("调用 Azure OpenAI 出错:", error);
+    console.error("调用 Azure OpenAI 出错:", error.message, error.response?.data);
     res.status(500).json({
       reply: "调用 Azure OpenAI 接口失败，请检查配置。",
       error: error.message,
@@ -59,8 +57,8 @@ app.post("/chat", async (req, res) => {
   }
 });
 
-// 端口监听（Azure 必须用 process.env.PORT）
-const PORT = process.env.PORT || 3000;
+// 端口监听
+const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`后端服务已启动：http://localhost:${PORT}`);
 });
